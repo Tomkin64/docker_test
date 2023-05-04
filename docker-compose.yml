@@ -1,0 +1,71 @@
+# https://github.com/docker/awesome-compose/tree/master/prometheus-grafana
+# https://github.com/vegasbrianc/prometheus
+---
+version: "3"
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=grafana
+    volumes:
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - grafana_data:/var/lib/grafana
+
+  alertmanager:
+    image: prom/alertmanager
+    container_name: alertmanager
+    depends_on:
+      - prometheus
+    ports:
+      - 9093:9093
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager:/etc/alertmanager/
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+
+  web:
+    image: philwinder/prometheus-python
+    container_name: python-app
+    ports:
+      - 5000:5000
+
+  # web:
+  #   container_name: python-app
+  #   depends_on:
+  #     - redis
+  #   build: ./my-python-app
+  #   ports:
+  #     - 5000:5000
+
+  # redis:
+  #   container_name: redis
+  #   image: redis:alpine
